@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pop'n Tier Search</title>
+<style>
+  body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    background-color: #f4f4f9; 
+    color: #333; 
+    margin: 0; 
+    padding: 20px; 
+  }
+  .container { 
+    max-width: 1100px; 
+    margin: auto; 
+    background: #fff; 
+    padding: 20px; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+  }
+  h1 { 
+    text-align: center; 
+    color: #ff0066; 
+  }
+  .controls { 
+    display: flex; 
+    gap: 15px; 
+    margin-bottom: 20px; 
+    flex-wrap: wrap; 
+    align-items: center;
+  }
+  input[type="text"], input[type="number"], select { 
+    padding: 10px; 
+    font-size: 16px; 
+    border: 1px solid #ccc; 
+    border-radius: 4px; 
+  }
+  #searchInput { 
+    flex: 2; 
+    min-width: 200px; 
+  }
+  #levelFilter, #sortSelect { 
+    flex: 1; 
+    min-width: 150px; 
+  }
+  
+  /* Button Styles */
+  .btn {
+    padding: 10px 15px;
+    background-color: #ff0066;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+  }
+  .btn:hover { background-color: #d80055; }
+  .btn-secondary { background-color: #555; }
+  .btn-secondary:hover { background-color: #333; }
+  .btn-danger { background-color: #d32f2f; }
+  .btn-danger:hover { background-color: #b71c1c; }
+
+  .action-group {
+    display: flex;
+    gap: 10px;
+    margin-left: auto; /* Pushes buttons to the right if space allows */
+  }
+
+  table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-top: 10px; 
+  }
+  th, td { 
+    padding: 12px; 
+    text-align: left; 
+    border-bottom: 1px solid #ddd; 
+  }
+  th { 
+    background-color: #333; 
+    color: white; 
+    font-weight: bold;
+  }
+  tr:hover { background-color: #fcfcfc; }
+  
+  /* Dynamic Tier Colors */
+  .tier-very-hard { color: #d32f2f; font-weight: bold; } /* 1.0 to 1.5 */
+  .tier-hard { color: #f57c00; font-weight: bold; }      /* 0.5 to 0.9 */
+  .tier-mid { color: #388e3c; font-weight: bold; }       /* 0.0 to 0.4 */
+  .tier-easy { color: #1976d2; font-weight: bold; }      /* -0.5 to -0.1 */
+  .tier-very-easy { color: #7b1fa2; font-weight: bold; } /* -1.5 to -0.6 */
+
+  /* Form Grid */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+  .form-group { display: flex; flex-direction: column; }
+  .form-group label { font-size: 14px; font-weight: bold; margin-bottom: 5px; color: #333; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Pop'n Tier Search</h1>
+  
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="Search by Title, Genre, or Artist...">
+    
+    <select id="levelFilter">
+      <option value="all">All Levels</option>
+      <option value="50">Level 50</option>
+      <option value="49">Level 49</option>
+      <option value="48">Level 48</option>
+      <option value="47">Level 47</option>
+      <option value="46">Level 46</option>
+	  <option value="45">Level 45</option>
+    </select>
+
+    <select id="sortSelect">
+      <option value="level-desc">Level (High to Low)</option>
+      <option value="level-asc">Level (Low to High)</option>
+      <option value="notes-desc">Total Notes (High to Low)</option>
+	  <option value="notes-asc">Total Notes (Low to High)</option>
+    </select>
+  </div>
+
+  <table id="songTable">
+    <thead>
+      <tr>
+        <th>Level</th>
+        <th>Tier</th>
+        <th>Title</th>
+        <th>Genre</th>
+        <th>Artist</th>
+        <th>Total Notes</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      </tbody>
+  </table>
+</div>
+
+<script>
+  // ---------------------------------------------------------
+  // 1. DOM ELEMENTS & STATE
+  // ---------------------------------------------------------
+  const tableBody = document.getElementById('tableBody');
+  const searchInput = document.getElementById('searchInput');
+  const levelFilter = document.getElementById('levelFilter');
+  const sortSelect = document.getElementById('sortSelect');
+  
+  let songData = [];
+
+  // ---------------------------------------------------------
+  // 2. FETCH DATA FROM JSON
+  // ---------------------------------------------------------
+  fetch('popn_level_tiers.json')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      songData = data;
+      renderTable(); // Only render the table once the data has arrived
+    })
+    .catch(error => {
+      console.error('Failed to load tier data:', error);
+      tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #d32f2f;">Failed to load song data. Please ensure popn_level_tiers.json is available.</td></tr>`;
+    });
+
+  // ---------------------------------------------------------
+  // 3. LOGIC & RENDERING
+  // ---------------------------------------------------------
+  function getTierColorClass(tierValue) {
+    if (tierValue >= 1.0) return "tier-very-hard";
+    if (tierValue >= 0.4) return "tier-hard";
+    if (tierValue >= 0.0) return "tier-mid";
+    if (tierValue >= -0.4) return "tier-easy";
+    return "tier-very-easy";
+  }
+
+  function renderTable() {
+    // Check in case the data hasn't loaded yet
+    if (!songData.length) return; 
+
+    const query = searchInput.value.toLowerCase();
+    const sortVal = sortSelect.value;
+    const levelVal = levelFilter.value;
+
+    let filtered = songData.filter(song => {
+      const matchesSearch = song.title.toLowerCase().includes(query) || 
+                            song.genre.toLowerCase().includes(query) || 
+                            song.artist.toLowerCase().includes(query);
+      const matchesLevel = levelVal === 'all' || song.level.toString() === levelVal;
+      return matchesSearch && matchesLevel;
+    });
+
+    filtered.sort((a, b) => {
+      if (sortVal === 'level-desc') return b.level - a.level || b.tier - a.tier;
+      if (sortVal === 'level-asc') return a.level - b.level || a.tier - b.tier;
+      if (sortVal === 'notes-desc') return b.notes - a.notes;
+	    if (sortVal === 'notes-asc') return a.notes - b.notes;
+      return 0;
+    });
+
+    tableBody.innerHTML = '';
+    filtered.forEach(song => {
+      const displayTier = song.tier > 0 ? "+" + song.tier.toFixed(1) : song.tier.toFixed(1);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${song.level}</strong></td>
+        <td class="${getTierColorClass(song.tier)}">${displayTier}</td>
+        <td>${song.title}</td>
+        <td>${song.genre}</td>
+        <td>${song.artist}</td>
+        <td>${song.notes}</td>
+      `;
+      tableBody.appendChild(tr);
+    });
+  }
+
+  // ---------------------------------------------------------
+  // 4. EVENT LISTENERS
+  // ---------------------------------------------------------
+  searchInput.addEventListener('input', renderTable);
+  levelFilter.addEventListener('change', renderTable);
+  sortSelect.addEventListener('change', renderTable);
+
+</script>
+</body>
+</html>
