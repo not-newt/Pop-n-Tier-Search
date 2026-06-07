@@ -135,7 +135,7 @@
   <h1>Pop'n Tier Search</h1>
   
   <div class="controls">
-    <input type="text" id="searchInput" placeholder="Search by Title or Genre...">
+    <input type="text" id="searchInput" placeholder="Search by Title, Genre, or Artist...">
     
     <select id="levelFilter">
       <option value="all">All Levels</option>
@@ -162,6 +162,7 @@
         <th>Tier</th>
         <th>Title</th>
         <th>Genre</th>
+        <th>Artist</th>
         <th>Total Notes</th>
       </tr>
     </thead>
@@ -213,7 +214,8 @@
 
     let filtered = songData.filter(song => {
       const matchesSearch = song.title.toLowerCase().includes(query) || 
-                            song.genre.toLowerCase().includes(query);
+                            song.genre.toLowerCase().includes(query) ||
+                            song.artist.toLowerCase().includes(query);
       const matchesLevel = levelVal === 'all' || song.level.toString() === levelVal;
       return matchesSearch && matchesLevel;
     });
@@ -236,6 +238,7 @@
         <td data-label="Tier" class="${getTierColorClass(song.tier)}">${displayTier}</td>
         <td data-label="Title">${song.title}</td>
         <td data-label="Genre">${song.genre}</td>
+        <td data-label="Artist">${song.artist}</td>
         <td data-label="Total Notes">${song.notes}</td>
       `;
       tableBody.appendChild(tr);
